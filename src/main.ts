@@ -14,11 +14,21 @@ async function startPolling(config: PollingConfig) {
     logger,
   })
   let runner: undefined | RunnerHandle
+  const server = createServer({
+    bot,
+    config,
+    logger,
+  })
+  const serverManager = createServerManager(server, {
+    host: config.serverHost,
+    port: config.serverPort,
+  })
 
   // graceful shutdown
   onShutdown(async () => {
     logger.info('Shutdown')
     await runner?.stop()
+    await serverManager.stop()
   })
 
   await Promise.all([
@@ -38,6 +48,12 @@ async function startPolling(config: PollingConfig) {
   logger.info({
     msg: 'Bot running...',
     username: bot.botInfo.username,
+  })
+
+  const info = await serverManager.start()
+  logger.info({
+    msg: 'Server started',
+    url: info.url,
   })
 }
 

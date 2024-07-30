@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import { serve } from '@hono/node-server'
 import { webhookCallback } from 'grammy'
 import { getPath } from 'hono/utils/url'
+import { cors } from 'hono/cors'
 import { requestId } from '#root/server/middlewares/request-id.js'
 import { setLogger } from '#root/server/middlewares/logger.js'
 import type { Env } from '#root/server/environment.js'
@@ -26,6 +27,7 @@ export function createServer(dependencies: Dependencies) {
 
   const server = new Hono<Env>()
 
+  server.use('*', cors())
   server.use(requestId())
   server.use(setLogger(logger))
   if (config.isDebug)
@@ -56,6 +58,40 @@ export function createServer(dependencies: Dependencies) {
   })
 
   server.get('/', c => c.json({ status: true }))
+
+  server.post('/test', async (c) => {
+    const body = await c.req.json()
+    bot.api.sendMessage(6773775244, `*Новая заявка на доставку*
+      от: *${body.name}*
+      Телефон: [${body.phone}](tel:${body.phone})`, { parse_mode: 'MarkdownV2' })
+    return c.json({ status: 'Success' })
+  })
+
+  server.post('/delivery', async (c) => {
+    const body = await c.req.json()
+    bot.api.sendMessage(config.botChat, `<b>Новая заявка на доставку</b>
+
+от:   <b>${body.name}</b>
+Телефон: ${body.phone}`, { parse_mode: 'HTML' })
+    return c.json({ status: 'Success' })
+  })
+
+  server.post('/order', async (c) => {
+    const body = await c.req.json()
+    const order_summary = Object.values(body.items)
+    bot.api.sendMessage(config.botChat, `<b>Новая заявка на доставку</b>
+
+от:   <b>${body.name}</b>
+Телефон: ${body.phone}
+
+Детали:
+${order_summary.map((item: any) => {
+  return `\n${item.product.name}   X   ${item.quantity}`
+})}
+
+Сумма:   <b>${body.amount}</b>`, { parse_mode: 'HTML' })
+    return c.json(body)
+  })
 
   if (config.isWebhookMode) {
     server.post(

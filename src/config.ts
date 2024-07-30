@@ -8,6 +8,7 @@ const baseConfigSchema = v.object({
   botToken: v.pipe(v.string(), v.regex(/^\d+:[\w-]+$/, 'Invalid token')),
   botAllowedUpdates: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.picklist(API_CONSTANTS.ALL_UPDATE_TYPES))), '[]'),
   botAdmins: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.number())), '[]'),
+  botChat: v.pipe(v.string(), v.transform(JSON.parse)),
 })
 
 const configSchema = v.variant('botMode', [
@@ -16,6 +17,8 @@ const configSchema = v.variant('botMode', [
     v.object({
       botMode: v.literal('polling'),
       ...baseConfigSchema.entries,
+      serverHost: v.optional(v.string(), '0.0.0.0'),
+      serverPort: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '80'),
     }),
     v.transform(input => ({
       ...input,
@@ -80,8 +83,11 @@ function createConfigFromEnvironment() {
   try {
     process.loadEnvFile()
   }
-  catch {
+  catch (error) {
     // No .env file found
+    throw new Error('No .env file found', {
+      cause: error,
+    })
   }
 
   try {
